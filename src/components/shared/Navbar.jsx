@@ -27,7 +27,7 @@ import { useNavigate } from "react-router-dom";
 const navItems = [
   { text: "Home", path: "/" },
   { text: "About", path: "/" },
-  { text: "Categories", path: "/" },
+  { text: "Products", path: "/products" },
 ];
 
 const Search = styled("div")(({ theme }) => ({

@@ -3,7 +3,7 @@ import { theme } from "./assets/theme";
 import Footer from "./components/shared/Footer";
 import { BrowserRouter } from "react-router-dom";
 import RoutesComponent from "./components/RoutesComponent";
-
+import './index.css';
 function App() {
   return (
     <>

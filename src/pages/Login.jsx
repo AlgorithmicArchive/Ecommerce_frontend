@@ -1,156 +1,240 @@
+import React, { useState } from 'react';
+import { Container, Row, Col, Form, Button as BootstrapButton } from 'react-bootstrap';
 import {
   Box,
   TextField,
-  Button,
   Typography,
-  Container,
+  Link,
   Alert,
-} from "@mui/material";
-import { Form } from "react-bootstrap";
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+  IconButton,
+  InputAdornment,
+  Divider,
+} from '@mui/material';
+import { Visibility, VisibilityOff, Google, Facebook, Apple } from '@mui/icons-material';
+import Cookies from 'js-cookie';
+import { useNavigate } from 'react-router-dom';
 
-export default function Login() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+// Mock login function (replace with actual API call)
+const loginUser = async (emailOrUsername, password, recaptchaToken) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (emailOrUsername === 'test@user.com' && password === 'Password123') {
+        resolve({ success: true, message: 'Login successful!' });
+      } else {
+        resolve({ success: false, message: 'Invalid credentials' });
+      }
+    }, 1000);
   });
-  const [errors, setErrors] = useState({});
-  const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
+};
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+// Mock reCAPTCHA function (replace with actual reCAPTCHA v3 integration)
+const executeRecaptcha = async () => {
+  return 'mock-recaptcha-token';
+};
+
+const Login = () => {
+  const [emailOrUsername, setEmailOrUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+
+  const validateEmail = (email) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
-    }
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-    return newErrors;
+  const isValidInput = () => {
+    if (!emailOrUsername) return false;
+    if (emailOrUsername.includes('@') && !validateEmail(emailOrUsername)) return false;
+    if (password.length < 8) return false;
+    return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length === 0) {
-      // Simulate successful login (replace with API call)
-      setSuccess(true);
+    setError('');
+    setSuccess('');
+
+    if (!isValidInput()) {
+      setError('Please enter a valid email/username and password (min 8 characters).');
+      return;
+    }
+
+    setLoading(true);
+
+    let recaptchaToken = null;
+    if (failedAttempts >= 3) {
+      recaptchaToken = await executeRecaptcha();
+      if (!recaptchaToken) {
+        setError('reCAPTCHA verification failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+    }
+
+    const response = await loginUser(emailOrUsername, password, recaptchaToken);
+    setLoading(false);
+
+    if (response.success) {
+      setSuccess(response.message);
+      if (rememberMe) {
+        Cookies.set('session', 'active', { expires: 30 });
+      }
+      setFailedAttempts(0);
       setTimeout(() => {
-        setSuccess(false);
-        navigate("/"); // Redirect to home after success
-      }, 2000);
+        window.location.href = '/dashboard';
+      }, 1000);
     } else {
-      setErrors(validationErrors);
+      setFailedAttempts((prev) => prev + 1);
+      if (failedAttempts + 1 >= 5) {
+        setError('Account locked. Please try again later or reset your password.');
+      } else {
+        setError(response.message);
+      }
     }
   };
+
+  const handleSocialLogin = (provider) => {
+    alert(`Logging in with ${provider}`);
+  };
+
+  const navigate = useNavigate();
 
   return (
     <Box
       sx={{
-        height: "90vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)", // Matching gradient
+        py: 6,
+        bgcolor: '#f5f5f5',
+        textAlign: 'center',
+        width: '100%',
+        height: '90vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
       }}
     >
-      <Container maxWidth="sm">
-        <Box
-          sx={{
-            p: 4,
-            backgroundColor: "white",
-            borderRadius: 2,
-            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
-            textAlign: "center",
-          }}
-        >
-          <Typography
-            variant="h4"
-            gutterBottom
-            sx={{ fontWeight: "bold", color: "#333" }}
-          >
-            Sign In
-          </Typography>
-          <Typography variant="body2" sx={{ color: "#666", mb: 3 }}>
-            Welcome back! Please login to continue shopping.
-          </Typography>
-
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              Login successful! Redirecting...
-            </Alert>
-          )}
-
-          <Form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              error={!!errors.email}
-              helperText={errors.email}
-              variant="outlined"
-              sx={{ mb: 2 }}
-              InputProps={{
-                style: { borderRadius: 8 },
-              }}
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              error={!!errors.password}
-              helperText={errors.password}
-              variant="outlined"
-              sx={{ mb: 3 }}
-              InputProps={{
-                style: { borderRadius: 8 },
-              }}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              sx={{
-                py: 1.5,
-                backgroundColor: "#1976d2",
-                "&:hover": { backgroundColor: "primary.main" },
-                borderRadius: 8,
-                textTransform: "none",
-                fontWeight: "bold",
-              }}
-            >
-              Login
-            </Button>
-          </Form>
-          <Typography variant="body2" sx={{ mt: 2, color: "#666" }}>
-            Don’t have an account?{" "}
-            <Button
-              color="primary"
-              onClick={() => navigate("/register")}
-              sx={{ textTransform: "none", fontWeight: "bold" }}
-            >
-              Register
-            </Button>
-          </Typography>
-        </Box>
+      <Container>
+        <Row className="justify-content-center">
+          <Col xs={12} sm={8} md={6} lg={4}>
+            <Typography variant="h5" style={{ fontWeight: 'bold', marginBottom: '1.5rem' }}>
+              Log In
+            </Typography>
+            {success ? (
+              <Alert severity="success" sx={{ marginBottom: 2 }}>
+                {success}
+              </Alert>
+            ) : (
+              <Form onSubmit={handleSubmit}>
+                <Row>
+                  <Col xs={12} className="mb-3">
+                    <TextField
+                      fullWidth
+                      label="Email or Username"
+                      value={emailOrUsername}
+                      onChange={(e) => setEmailOrUsername(e.target.value)}
+                      error={!!error}
+                      helperText={error && 'Enter a valid email or username'}
+                      sx={{ bgcolor: '#fff' }}
+                    />
+                  </Col>
+                  <Col xs={12} className="mb-3">
+                    <TextField
+                      fullWidth
+                      type={showPassword ? 'text' : 'password'}
+                      label="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      error={!!error}
+                      helperText={error && 'Password must be at least 8 characters'}
+                      sx={{ bgcolor: '#fff' }}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowPassword(!showPassword)}
+                              edge="end"
+                            >
+                              {showPassword ? <VisibilityOff /> : <Visibility />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Col>
+                  <Col xs={12} className="mb-3">
+                    <Box
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Form.Check
+                        type="checkbox"
+                        label="Remember Me"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                      />
+                      <Link href="/reset-password" underline="hover" style={{ fontSize: '0.875rem' }}>
+                        Forgot Password?
+                      </Link>
+                    </Box>
+                  </Col>
+                  <Col xs={12} className="mb-3">
+                    <BootstrapButton
+                      type="submit"
+                      variant="primary"
+                      disabled={loading || !isValidInput()}
+                      style={{
+                        width: '100%',
+                        borderRadius: '25px',
+                        padding: '12px',
+                        textTransform: 'none',
+                        fontSize: '1rem',
+                      }}
+                    >
+                      {loading ? 'Logging In...' : 'Log In'}
+                    </BootstrapButton>
+                  </Col>
+                  {failedAttempts >= 3 && (
+                    <Col xs={12} className="mb-3">
+                      <Typography variant="caption" color="text.secondary">
+                        Verifying you’re not a bot...
+                      </Typography>
+                    </Col>
+                  )}
+                </Row>
+                <Divider sx={{ my: 3 }}>Or log in with</Divider>
+                <Row>
+                  <Col xs={12} className="mb-2">
+                    <BootstrapButton
+                      variant="outline-secondary"
+                      style={{ width: '100%', textTransform: 'none' }}
+                      onClick={() => handleSocialLogin('Google')}
+                    >
+                      <Google fontSize="small" style={{ marginRight: '8px' }} />
+                      Google
+                    </BootstrapButton>
+                  </Col>
+                </Row>
+                <Typography variant="body2" style={{ marginTop: '1.5rem' }}>
+                  Don’t have an account?{' '}
+                  {/* <Link href="/register" underline="hover">
+                    Sign up
+                  </Link> */}
+                  <Box component={"span"} sx={{color:"primary.main",cursor:'pointer'}} onClick={()=>navigate('/register')}>Sign Up</Box>
+                </Typography>
+              </Form>
+            )}
+          </Col>
+        </Row>
       </Container>
     </Box>
   );
-}
+};
+
+export default Login;
